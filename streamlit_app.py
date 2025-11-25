@@ -7,25 +7,44 @@ from openai import OpenAI
 import streamlit as st
 
 # ---------------------------------------------------------
-# Setup
+# Setup – config from Streamlit secrets (cloud) or .env (local)
 # ---------------------------------------------------------
 
-load_dotenv()
+def get_config():
+    # 1) Prefer Streamlit secrets (Streamlit Cloud)
+    if hasattr(st, "secrets") and "POSTGRES_HOST" in st.secrets:
+        db_config = {
+            "host": st.secrets["POSTGRES_HOST"],
+            "port": st.secrets["POSTGRES_PORT"],
+            "dbname": st.secrets["POSTGRES_DB"],
+            "user": st.secrets["POSTGRES_USER"],
+            "password": st.secrets["POSTGRES_PASSWORD"],
+        }
+        openai_api_key = st.secrets["OPENAI_API_KEY"]
+        embed_model = st.secrets.get("OPENAI_EMBED_MODEL", "text-embedding-3-large")
+    else:
+        # 2) Fallback to local .env when running on your machine
+        load_dotenv()
 
-DB_CONFIG = {
-    "host": os.getenv("POSTGRES_HOST"),
-    "port": os.getenv("POSTGRES_PORT"),
-    "dbname": os.getenv("POSTGRES_DB"),
-    "user": os.getenv("POSTGRES_USER"),
-    "password": os.getenv("POSTGRES_PASSWORD"),
-}
+        db_config = {
+            "host": os.getenv("POSTGRES_HOST"),
+            "port": os.getenv("POSTGRES_PORT"),
+            "dbname": os.getenv("POSTGRES_DB"),
+            "user": os.getenv("POSTGRES_USER"),
+            "password": os.getenv("POSTGRES_PASSWORD"),
+        }
+        openai_api_key = os.getenv("OPENAI_API_KEY")
+        embed_model = os.getenv("OPENAI_EMBED_MODEL", "text-embedding-3-large")
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-EMBED_MODEL = os.getenv("OPENAI_EMBED_MODEL", "text-embedding-3-large")
+    return db_config, openai_api_key, embed_model
+
+
+DB_CONFIG, OPENAI_API_KEY, EMBED_MODEL = get_config()
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
 register_default_json(loads=lambda x: x)  # just in case JSON arrays appear
+
 
 # ---------------------------------------------------------
 # Helper functions
